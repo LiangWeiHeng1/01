@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#f2f4f7">
+<title>DL序计算</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --card:#fff; --line:#e2e6eb; --ink:#1f2328; --muted:#727c89;
+    --accent:#0055cc; --accent-dark:#0046a8; --danger:#c62828;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    padding:14px 16px calc(56px + env(safe-area-inset-bottom));
+    background:var(--bg); color:var(--ink);
+    font:14px/1.55 "Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
+  }
+  .wrap{max-width:1320px;margin:0 auto;}
+
+  /* ---------- 顶部 ---------- */
+  .topbar{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 2px 12px;}
+  h1{font-size:20px;margin:0;letter-spacing:.05em;}
+  .status{font-size:12.5px;color:var(--muted);}
+  .status.ok{color:#0b7a4b;}
+  .status.warn{color:#b26a00;}
+
+  /* ---------- 卡片 ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .card-head h2{font-size:15px;margin:0;}
+  .hint{font-size:12.5px;color:var(--muted);}
+  .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+  /* ---------- 按钮 ---------- */
+  button{font:inherit;cursor:pointer;border:1px solid transparent;border-radius:8px;padding:8px 14px;background:var(--accent);color:#fff;min-height:36px;transition:background .15s;}
+  button:hover{background:var(--accent-dark);}
+  button.ghost{background:#fff;color:#3a4654;border-color:#d4dae1;}
+  button.ghost:hover{background:#f4f7fa;}
+  button.danger{background:#fff;color:var(--danger);border-color:#e7bdbd;}
+  button.danger:hover{background:#fdf3f3;}
+  button.mini{padding:3px 9px;font-size:12px;border-radius:6px;min-height:28px;}
+
+  /* ---------- 输入 ---------- */
+  textarea{
+    width:100%;height:190px;resize:vertical;padding:10px 12px;border:1px solid #d4dae1;border-radius:8px;
+    background:#fbfcfd;color:var(--ink);font:13.5px/1.7 Consolas,"Courier New",monospace;
+  }
+  textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);background:#fff;}
+  .input-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .parsed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);}
+  .chip{background:#eef2f7;border:1px solid #dde4ec;border-radius:999px;padding:2px 9px;color:#33404d;font-family:Consolas,monospace;}
+  .chip.te{background:#f3ecfb;border-color:#e0d2f3;color:#6b30a8;}
+
+  input[type=text],input[type=number],select{
+    font:inherit;height:38px;padding:0 10px;border:1px solid #d4dae1;border-radius:8px;background:#fff;color:var(--ink);min-width:0;width:100%;
+  }
+  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);}
+
+  /* ---------- 快速添加 ---------- */
+  .quick{border:1px dashed #cfd8e3;background:#f7f9fc;border-radius:10px;padding:10px 12px;margin-bottom:14px;}
+  .quick-label{display:block;font-size:13px;font-weight:700;color:#3a4654;margin-bottom:8px;}
+  .quick-label .sub{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px;}
+  .quick-grid{display:grid;gap:8px;grid-template-columns:minmax(0,1fr) 150px 108px 96px 82px;grid-template-areas:"text name rule type btn";}
+  #qText{grid-area:text;}
+  #qName{grid-area:name;}
+  #qRule{grid-area:rule;}
+  #qType{grid-area:type;}
+  #qAdd{grid-area:btn;padding:0 10px;}
+  .quick-preview{margin-top:8px;font-size:12.5px;color:#5a6672;min-height:18px;word-break:break-all;line-height:1.6;}
+  .quick-preview.err{color:#c62828;}
+  .quick-preview.ok{color:#0b7a4b;}
+
+  /* ---------- 表格 ---------- */
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  table.detail{min-width:1120px;}
+  .table-wrap{overflow:auto;}
+  thead th{position:sticky;top:0;background:#eef1f5;color:#44505e;font-weight:600;z-index:2;border-bottom:1px solid #dde3ea;white-space:nowrap;}
+  thead th.th-expr{text-align:left;}
+  th,td{border-bottom:1px solid #eef1f4;padding:6px 8px;text-align:center;vertical-align:middle;}
+  tbody tr:hover{background:#fafbfd;}
+  td.c-name{text-align:left;font-weight:600;white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis;}
+  td.c-expr{text-align:left;line-height:1.95;color:#2b333c;}
+  td.c-ops{white-space:nowrap;}
+  td.c-ops button{margin:0 2px;}
+
+  .tm{white-space:nowrap;}
+  .tm i{font-style:normal;color:#8b95a3;}
+  .tm.te{color:#6b30a8;}
+  .tm.global{color:#0b7a4b;}
+  .tm.fixed{color:#a15c00;font-weight:600;}
+  .op{color:#a7b0bc;margin:0 1px;}
+  .muted{color:#9aa3af;}
+  .res{color:var(--accent);font-size:15px;}
+  .res-pair{display:inline-block;margin:0 3px;color:#5a6672;font-size:12px;}
+  .res-pair b{color:var(--accent);font-size:14px;}
+  td.c-empty{text-align:center;color:#9aa3af;padding:16px 0;}
+
+  /* ---------- 统计 ---------- */
+  .stat-line{padding:5px 0;border-bottom:1px dashed #e8ecf1;font-size:13.5px;color:#2b333c;font-family:Consolas,"Microsoft YaHei",monospace;}
+  .stat-line:last-child{border-bottom:none;}
+  .stat-line .lb{color:var(--accent);font-weight:700;margin-right:6px;}
+  .stat-line .cnt{color:#98a1ad;font-size:12.5px;margin-left:6px;}
+  .empty{color:#9aa3af;padding:6px 0;}
+
+  /* ---------- 弹窗 ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;}
+  .overlay.hidden{display:none;}
+  .modal{background:#fff;border-radius:12px;width:min(760px,100%);max-height:88vh;overflow:auto;padding:18px 20px 16px;box-shadow:0 24px 60px rgba(15,23,42,.28);}
+  .modal h3{margin:0 0 14px;font-size:16px;}
+  .form-grid{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:10px;}
+  .form-grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#5a6672;}
+  .check{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5a6672;margin-top:10px;}
+  .check input{width:16px;height:16px;}
+
+  .expr-head{display:flex;align-items:center;justify-content:space-between;margin:16px 0 6px;font-size:13px;color:#3a4654;font-weight:600;gap:10px;flex-wrap:wrap;}
+  .term-list{border:1px solid #e6eaef;border-radius:8px;padding:6px 10px;background:#fafbfd;max-height:280px;overflow:auto;}
+  .term-row{display:flex;gap:8px;align-items:center;padding:4px 0;}
+  .term-params{display:flex;gap:8px;flex:1;flex-wrap:wrap;}
+  .t-num{width:120px;}
+  .t-del{width:34px;padding:3px 0;font-size:15px;line-height:1;flex:0 0 auto;}
+  .preview{margin-top:8px;font-size:12.5px;color:#5a6672;background:#f5f8fb;border:1px dashed #dbe3ec;border-radius:6px;padding:7px 10px;word-break:break-all;}
+  .modal-foot{display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .spacer{flex:1;}
+
+  /* ===================== 手机 / 窄屏 ===================== */
+  @media (max-width:1023px){
+    .table-wrap{overflow:visible;}
+    table.detail{min-width:0;display:block;}
+    table.detail thead{display:none;}
+    table.detail tbody{display:block;}
+    table.detail tr{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:
+        "name  res"
+        "type  rule"
+        "expr  expr"
+        "total sub"
+        "ops   ops";
+      gap:2px 10px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px 12px;
+      margin:0 0 10px;
+      background:#fff;
+    }
+    table.detail td{border:0;padding:0;text-align:left;font-size:13px;min-width:0;}
+    table.detail tbody tr:hover{background:#fff;}
+    table.detail td.c-name{grid-area:name;max-width:100%;font-size:14px;}
+    table.detail td.c-type{grid-area:type;color:#98a1ad;font-size:12px;}
+    table.detail td.c-rule{grid-area:rule;text-align:right;color:#98a1ad;font-size:12px;}
+    table.detail td.c-expr{grid-area:expr;margin:2px 0;font-size:12.5px;line-height:1.9;overflow-wrap:anywhere;}
+    table.detail td.c-total{grid-area:total;color:#7b8794;font-size:12px;}
+    table.detail td.c-sub{grid-area:sub;text-align:right;color:#7b8794;font-size:12px;}
+    table.detail td.c-res{grid-area:res;text-align:right;white-space:nowrap;}
+    table.detail td.c-res .res-pair{display:block;margin:0;}
+    table.detail td.c-ops{grid-area:ops;display:flex;justify-content:flex-end;gap:6px;margin-top:6px;}
+    table.detail td.c-ops button{min-height:32px;padding:4px 12px;font-size:13px;margin:0;}
+    table.detail td.c-total::before{content:attr(data-label) " ";color:#a7b0bc;}
+    table.detail td.c-sub::before{content:attr(data-label) " ";color:#a7b0bc;}
+    table.detail td.c-empty{grid-column:1 / -1;border:0;text-align:center;padding:14px 0;}
+  }
+
+  @media (max-width:720px){
+    body{padding:10px 10px calc(40px + env(safe-area-inset-bottom));}
+    h1{font-size:18px;}
+    .card{padding:12px;border-radius:10px;margin-bottom:12px;}
+    textarea{height:150px;}
+    .quick{padding:10px;}
+    .quick-grid{grid-template-columns:1fr 1fr;grid-template-areas:"text text" "name name" "rule type" "btn btn";}
+    #qAdd{height:42px;font-size:15px;font-weight:600;}
+    .overlay{padding:0;align-items:stretch;}
+    .modal{width:100%;max-height:100vh;border-radius:0;padding:14px 12px calc(20px + env(safe-area-inset-bottom));}
+    .modal h3{position:sticky;top:-14px;background:#fff;padding:4px 0 10px;z-index:3;}
+    .form-grid{grid-template-columns:1fr 1fr;gap:8px;}
+    .form-grid label:first-child{grid-column:1 / -1;}
+    .term-list{max-height:none;overflow:visible;padding:2px 10px;}
+    .term-row{flex-wrap:wrap;gap:8px;padding:8px 0;border-bottom:1px dashed #e6eaef;}
+    .term-row:last-child{border-bottom:0;}
+    .t-kind{flex:1 1 auto;order:1;width:auto;min-width:0;}
+    .t-del{order:2;flex:0 0 40px;width:40px;height:38px;}
+    .term-params{order:3;flex:1 1 100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+    .term-params select,.term-params input{width:100%;}
+    .t-num{width:100%;}
+    .stat-line{font-size:12.5px;}
+    .modal-foot button{flex:1 1 auto;}
+    .spacer{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>DL序计算</h1>
+    <span class="status" id="status">等待粘贴开奖信息…</span>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>开奖信息</h2>
+      <span class="hint">粘贴后自动计算</span>
+    </div>
+    <textarea id="inputData" spellcheck="false" placeholder="279期&#10;2026-01-01&#10;03&#10;鼠/水&#10;12&#10;虎/木&#10;……（6 个平码 + 1 个特码）"></textarea>
+    <div class="input-foot">
+      <div class="parsed" id="parsed"></div>
+      <button class="ghost mini" id="btnClear" type="button">清空</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>统计</h2>
+      <span class="hint" id="statHint"></span>
+    </div>
+    <div id="stats"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>逐条</h2>
+      <span class="hint" id="formulaCount"></span>
+    </div>
+
+    <div class="quick">
+      <label class="quick-label" for="qText">快速添加公式<span class="sub">直接写出来，例：平1头+平2码+特肖+50</span></label>
+      <div class="quick-grid">
+        <input type="text" id="qText" placeholder="平1头+平2码+特肖+50" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">
+        <input type="text" id="qName" placeholder="名称（可留空）" autocomplete="off">
+        <select id="qRule" aria-label="规则">
+          <option value="49">49 制</option>
+          <option value="48">48 制</option>
+          <option value="both">4948 双制</option>
+        </select>
+        <select id="qType" aria-label="顺序">
+          <option value="D">D 序</option>
+          <option value="L">L 序</option>
+        </select>
+        <button id="qAdd" type="button">添加</button>
+      </div>
+      <div class="quick-preview" id="qPreview"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="detail">
+        <thead>
+          <tr>
+            <th style="width:108px">名称</th>
+            <th style="width:56px">类型</th>
+            <th style="width:96px">规则</th>
+            <th class="th-expr">过程（公式展开）</th>
+            <th style="width:70px">原始和</th>
+            <th style="width:62px">减法</th>
+            <th style="width:110px">结果</th>
+            <th style="width:150px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">编辑公式</h3>
+
+    <div class="form-grid">
+      <label>名称
+        <input type="text" id="fName" maxlength="40" autocomplete="off">
+      </label>
+      <label>类型
+        <select id="fType">
+          <option value="D">D序（升序）</option>
+          <option value="L">L序（原序）</option>
+        </select>
+      </label>
+      <label>规则
+        <select id="fRule">
+          <option value="48">48 制</option>
+          <option value="49">49 制</option>
+          <option value="both">48/49 双制</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="check"><input type="checkbox" id="fStop"> 48 制减到 ≤49 即止（仅 48 制分支有效）</label>
+
+    <div class="expr-head">
+      <span>表达式各项（按顺序相加）</span>
+      <div class="tools">
+        <button class="ghost mini" type="button" data-add="pos">＋ 位置</button>
+        <button class="ghost mini" type="button" data-add="fixed">＋ 固定值</button>
+        <button class="ghost mini" type="button" data-add="global">＋ 全局值</button>
+      </div>
+    </div>
+    <div id="termList" class="term-list"></div>
+    <div class="preview" id="exprPreview"></div>
+
+    <div class="modal-foot">
+      <button class="danger" id="btnDel" type="button">删除公式</button>
+      <span class="spacer"></span>
+      <button class="ghost" id="btnCancel" type="button">取消</button>
+      <button id="btnSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== ENGINE START 计算引擎（无 DOM 依赖） ===================== */
+
+/* ---------- 波色 / 五行 / 生肖 ---------- */
+const RED   = new Set([1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46]);
+const BLUE  = new Set([3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48]);
+const GREEN = new Set([5,6,11,16,17,21,22,27,28,32,33,38,39,43,44,49]);
+const WUXING = { 金:1, 木:2, 水:3, 火:4, 土:5 };
+const SHENGXIAO = { 鼠:1, 牛:2, 虎:3, 兔:4, 龙:5, 蛇:6, 马:7, 羊:8, 猴:9, 鸡:10, 狗:11, 猪:12 };
+const NIAN_SHENGXIAO = { 马:1, 蛇:2, 龙:3, 兔:4, 虎:5, 牛:6, 鼠:7, 猪:8, 狗:9, 鸡:10, 猴:11, 羊:12 };
+
+const SX_LIST = '鼠牛虎兔龙蛇马羊猴鸡狗猪';
+const WX_LIST = '金木水火土';
+
+function getBo(n){ if (RED.has(n)) return 0; if (BLUE.has(n)) return 1; if (GREEN.has(n)) return 2; return 0; }
+function getDuan(n){ if (n <= 7) return 1; if (n <= 14) return 2; if (n <= 21) return 3; if (n <= 28) return 4; if (n <= 35) return 5; if (n <= 42) return 6; return 7; }
+
+/* ---------- 属性 / 全局项 词表 ---------- */
+const ATTR_LIST = [
+  ['ma',         '码'],
+  ['tou',        '头'],
+  ['wei',        '尾'],
+  ['he',         '合'],
+  ['heWei',      '合尾'],
+  ['bo',         '波'],
+  ['duan',       '段'],
+  ['hang',       '行'],
+  ['xiaoWei',    '肖位'],
+  ['xiaoWeiNian','肖(年)']
+];
+const ATTR_LABEL = {};
+ATTR_LIST.forEach(function(p){ ATTR_LABEL[p[0]] = p[1]; });
+const ATTR_KEYS = new Set(ATTR_LIST.map(function(p){ return p[0]; }));
+
+const GLOBAL_LIST = [
+  ['zong',      '总分'],
+  ['zongWei',   '总尾'],
+  ['zongHe',    '总和'],
+  ['zongHeWei', '总和尾'],
+  ['liuHeWei',  '六合尾'],
+  ['qi',        '期数'],
+  ['qiHe',      '期合'],
+  ['qiHeWei',   '期合尾'],
+  ['qiWei',     '期尾']
+];
+const GLOBAL_LABEL = {};
+GLOBAL_LIST.forEach(function(p){ GLOBAL_LABEL[p[0]] = p[1]; });
+const GLOBAL_KEYS = new Set(GLOBAL_LIST.map(function(p){ return p[0]; }));
+
+/* 文字公式里可以写的属性名（含别名） */
+const ATTR_ALIASES = {
+  '码': 'ma', '头': 'tou', '尾': 'wei', '合': 'he', '合尾': 'heWei',
+  '波': 'bo', '段': 'duan', '行': 'hang', '肖位': 'xiaoWei', '位': 'xiaoWei',
+  '肖': 'xiaoWeiNian', '生肖': 'xiaoWeiNian'
+};
+/* 文字公式里可以写的全局项 */
+const GLOBAL_ALIASES = {
+  '总分': 'zong', '总尾': 'zongWei', '总和': 'zongHe', '总和尾': 'zongHeWei',
+  '六合尾': 'liuHeWei', '期数': 'qi', '期合': 'qiHe', '期合尾': 'qiHeWei', '期尾': 'qiWei'
+};
+
+/* ---------- 单个号码对象 ---------- */
+function makeObj(num, sx, wx){
+  return {
+    num: num,
+    sx: sx,
+    wx: wx,
+    ma: num,
+    bo: getBo(num),
+    duan: getDuan(num),
+    tou: Math.floor(num / 10),
+    wei: num % 10,
+    he: Math.floor(num / 10) + (num % 10),
+    heWei: (Math.floor(num / 10) + (num % 10)) % 10,
+    hang: WUXING[wx] || 0,
+    xiaoWei: SHENGXIAO[sx] || 0,
+    xiaoWeiNian: NIAN_SHENGXIAO[sx] || 0
+  };
+}
+
+/* ---------- 输入解析 ---------- */
+const RE_PAIR = new RegExp('^([' + SX_LIST + '])\\s*[/\\u3001,\\uFF0C]\\s*([' + WX_LIST + '])$');
+const RE_COMBINED = new RegExp('^(\\d{1,2})\\s*[' + SX_LIST + ']\\s*[/\\u3001,\\uFF0C]\\s*[' + WX_LIST + ']$');
+
+function findQi(text){
+  const m = String(text || '').match(/(\d+)\s*期/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function parseInput(text){
+  const lines = String(text || '').split(/\r?\n/).map(function(s){ return s.trim(); }).filter(function(s){ return s.length > 0; });
+  const items = [];
+  for (let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    if (line === '+' || line === '＋') continue;
+    if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(line)) continue;   /* 日期 */
+    if (/^(第)?\d+期$/.test(line)) continue;                        /* 期数行 */
+
+    /* 号码 + 生肖/五行 写在同一行 */
+    const m = line.match(RE_COMBINED);
+    if (m){
+      const sm = line.match(/([\u4e00-\u9fa5])\s*[/、,，]\s*([\u4e00-\u9fa5])$/);
+      if (sm && SHENGXIAO[sm[1]] !== undefined && WUXING[sm[2]] !== undefined){
+        items.push({ num: parseInt(m[1], 10), sx: sm[1], wx: sm[2] });
+        continue;
+      }
+    }
+
+    /* 号码一行，下一行 生肖/五行 */
+    const n = line.match(/^(\d{1,2})$/);
+    if (n){
+      const next = lines[i + 1];
+      const p = next ? next.match(RE_PAIR) : null;
+      if (p){
+        items.push({ num: parseInt(n[1], 10), sx: p[1], wx: p[2] });
+        i++;
+      }
+    }
+  }
+  return items;
+}
+
+/* ---------- 表达式项 ---------- */
+function P(pos, attr, order){ return { k: 'pos', pos: pos, attr: attr, order: order || 'auto' }; }
+function F(v){ return { k: 'fixed', v: v }; }
+function G(key){ return { k: 'global', key: key }; }
+
+function termLabel(t){
+  if (!t) return '';
+  if (t.k === 'fixed') return String(t.v);
+  if (t.k === 'global') return GLOBAL_LABEL[t.key] || t.key;
+  const prefix = Number(t.pos) === 7 ? '特' : ('平' + t.pos);
+  return prefix + (ATTR_LABEL[t.attr] || t.attr);
+}
+
+/* ---------- 文字公式解析：平1头+平2码+特肖+50 ---------- */
+const CN_NUM = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6 };
+
+function parseFormulaText(text){
+  const norm = String(text || '')
+    .replace(/[＋]/g, '+')
+    .replace(/[，,；;、]/g, '+')
+    .replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/\s+/g, '');
+
+  const tokens = norm.split('+').filter(function(s){ return s.length > 0; });
+  if (!tokens.length) return { ok:false, error:'还没有输入公式' };
+
+  const expr = [];
+  for (let i = 0; i < tokens.length; i++){
+    const tok = tokens[i];
+
+    /* 固定数字 */
+    if (/^\d{1,3}$/.test(tok)){
+      expr.push({ k:'fixed', v: parseInt(tok, 10) });
+      continue;
+    }
+
+    /* 全局项 */
+    if (Object.prototype.hasOwnProperty.call(GLOBAL_ALIASES, tok)){
+      expr.push({ k:'global', key: GLOBAL_ALIASES[tok] });
+      continue;
+    }
+
+    /* 平1 ~ 平6 */
+    const m = tok.match(/^平([1-6一二三四五六])(.*)$/);
+    if (m){
+      const num = CN_NUM[m[1]] || Number(m[1]);
+      let rest = m[2];
+      let order = 'auto';
+      const tail = rest.slice(-1);
+      if (tail === 'L' || tail === 'l'){ order = 'L'; rest = rest.slice(0, -1); }
+      else if (tail === 'D' || tail === 'd'){ order = 'D'; rest = rest.slice(0, -1); }
+      if (!rest) rest = '码';
+      const attr = ATTR_ALIASES[rest];
+      if (!attr) return { ok:false, error:'第 ' + (i + 1) + ' 项「' + tok + '」看不懂，可写：平1头 / 平2码 / 平3肖位 / 平4肖' };
+      expr.push({ k:'pos', pos:num, attr:attr, order:order });
+      continue;
+    }
+
+    /* 特（特码 / 特头 / 特肖 / 特段 …） */
+    if (tok.charAt(0) === '特'){
+      const rest = tok.length > 1 ? tok.slice(1) : '码';
+      const attr = ATTR_ALIASES[rest];
+      if (!attr) return { ok:false, error:'第 ' + (i + 1) + ' 项「' + tok + '」看不懂，可写：特码 / 特头 / 特肖 / 特肖位 / 特段' };
+      expr.push({ k:'pos', pos:7, attr:attr, order:'auto' });
+      continue;
+    }
+
+    return { ok:false, error:'第 ' + (i + 1) + ' 项「' + tok + '」看不懂，可写：平1头 / 特肖 / 总分 / 50' };
+  }
+
+  return { ok:true, expr:expr };
+}
+
+/* ---------- 默认公式（首次打开时使用；之后完全以你增删的结果为准） ---------- */
+const DEFAULT_FORMULAS = [
+  /* ===== 第一组 ===== */
+  { name:'1-D序',   type:'D', rule:'48', expr:[P(1,'tou'),P(1,'bo'),P(2,'xiaoWei'),P(6,'wei'),F(72)] },
+  { name:'2-D序',   type:'D', rule:'48', expr:[P(2,'tou'),P(3,'duan'),P(6,'hang'),F(45)] },
+  { name:'3-D序',   type:'D', rule:'49', expr:[P(4,'he'),P(5,'wei'),P(6,'duan'),F(13)] },
+  { name:'4-D序',   type:'D', rule:'48', expr:[P(1,'hang'),P(2,'he'),P(3,'bo'),F(72)] },
+  { name:'5-D序',   type:'D', rule:'49', expr:[P(5,'hang'),P(6,'xiaoWei'),P(6,'duan'),F(19)] },
+  { name:'6-D序',   type:'D', rule:'49', expr:[P(1,'xiaoWei'),P(1,'he'),P(1,'bo'),P(2,'hang'),P(3,'hang'),F(20)] },
+  { name:'7-D序',   type:'D', rule:'49', expr:[P(2,'duan'),P(3,'bo'),P(4,'bo'),P(5,'hang'),P(6,'wei'),F(7)] },
+  { name:'8-L序',   type:'L', rule:'48', expr:[P(2,'hang'),P(3,'wei'),P(4,'tou'),P(6,'wei'),F(40)] },
+  { name:'9-L序',   type:'L', rule:'48', expr:[P(2,'wei'),P(3,'wei'),P(3,'he'),P(4,'duan'),P(6,'tou'),F(54)] },
+  { name:'10-L序',  type:'L', rule:'48', expr:[P(2,'tou'),P(2,'xiaoWei'),P(3,'duan'),P(4,'duan'),F(65)] },
+  { name:'11-L序',  type:'L', rule:'49', expr:[P(2,'duan'),P(3,'duan'),P(4,'bo'),P(5,'tou'),P(5,'xiaoWei'),F(15)] },
+  { name:'12-L序',  type:'L', rule:'49', expr:[P(4,'hang'),P(5,'hang'),P(5,'bo'),P(5,'tou'),F(25)] },
+  { name:'13-L序',  type:'L', rule:'48', expr:[P(1,'tou'),P(4,'wei'),P(4,'xiaoWei'),F(69)] },
+  { name:'14-L序',  type:'L', rule:'49', expr:[P(2,'tou'),P(3,'duan'),P(4,'tou'),P(4,'wei'),P(5,'he'),F(21)] },
+  { name:'15-L序',  type:'L', rule:'48', expr:[P(1,'duan'),P(2,'duan'),P(5,'xiaoWei'),P(6,'he'),F(53)] },
+
+  /* ===== 第二组 ===== */
+  { name:'1-D序(二)',  type:'D', rule:'49', expr:[P(3,'wei'),P(3,'duan'),P(4,'wei'),P(6,'duan'),F(11),P(7,'he'),G('zong')] },
+  { name:'2-D序(二)',  type:'D', rule:'49', expr:[P(2,'bo'),P(5,'ma'),F(29),P(7,'bo'),P(7,'duan')] },
+  { name:'3-D序(二)',  type:'D', rule:'49', expr:[P(3,'he'),P(6,'hang'),F(18),P(7,'he')] },
+  { name:'4-D序(二)',  type:'D', rule:'49', expr:[P(5,'ma'),P(6,'wei'),F(27)] },
+  { name:'5-D(二)',    type:'D', rule:'49', expr:[P(6,'duan'),P(6,'xiaoWei'),P(6,'heWei'),F(18)] },
+  { name:'6-D(二)',    type:'D', rule:'49', expr:[P(1,'he'),P(2,'tou'),P(4,'bo'),P(6,'hang'),P(6,'heWei'),F(8),G('qiHe')] },
+  { name:'7-D(二)',    type:'D', rule:'49', expr:[P(1,'bo'),P(2,'ma'),P(2,'xiaoWei'),P(4,'duan'),P(5,'tou'),F(37),G('qiWei')] },
+  { name:'8-L序(二)',  type:'L', rule:'49', expr:[P(1,'duan'),P(3,'hang'),P(4,'hang'),P(4,'wei'),F(38),P(7,'xiaoWei'),P(7,'hang')] },
+  { name:'9-L序(二)',  type:'L', rule:'49', expr:[P(1,'duan'),P(4,'xiaoWei'),P(5,'tou'),P(5,'bo'),F(11),G('zongHeWei')] },
+  { name:'10-L序(二)', type:'L', rule:'49', expr:[P(2,'ma'),P(4,'tou'),P(4,'wei'),P(5,'heWei'),P(5,'duan'),P(6,'duan'),P(6,'xiaoWei'),P(6,'heWei'),F(6)] },
+  { name:'11-L序(二)', type:'L', rule:'49', expr:[P(2,'bo'),P(3,'wei'),P(5,'ma'),P(5,'he'),P(6,'xiaoWei'),P(6,'hang'),F(40),P(7,'ma'),P(7,'heWei'),P(7,'duan'),G('qi')] },
+  { name:'12-L序(二)', type:'L', rule:'49', expr:[P(1,'duan'),P(3,'he'),P(4,'he'),F(23),G('qi')] },
+
+  /* ===== 第三组 ===== */
+  { name:'1-L序(三)',  type:'L', rule:'49', expr:[P(3,'bo'),P(4,'xiaoWeiNian'),P(5,'wei'),F(18),G('zongHeWei'),P(7,'tou')] },
+  { name:'2-L序(三)',  type:'L', rule:'49', expr:[F(34),G('qiHe'),P(3,'ma','L'),P(5,'bo','L'),P(6,'he','L')] },
+  { name:'3-L序(三)',  type:'L', rule:'both', stopAt49:true, expr:[P(3,'ma'),P(3,'he'),P(6,'ma'),P(6,'he'),F(23),P(7,'bo'),P(7,'he')] },
+  { name:'4-L序(三)',  type:'L', rule:'48', expr:[P(3,'ma'),P(3,'he'),P(6,'ma'),P(6,'he'),F(18),P(7,'bo'),P(7,'he')] },
+  { name:'5-L序(三)',  type:'L', rule:'49', expr:[F(41),G('zongHeWei'),P(7,'ma')] },
+  { name:'6-D序(三)',  type:'D', rule:'both', expr:[P(1,'tou'),P(6,'ma'),P(6,'bo'),F(8),P(7,'ma'),G('zongHeWei')] },
+  { name:'8-D序(三)',  type:'D', rule:'49', expr:[P(1,'tou'),P(6,'ma'),P(6,'bo'),F(45),P(7,'ma'),G('zongHeWei')] },
+  { name:'9-D序(三)',  type:'D', rule:'49', expr:[P(5,'wei'),P(5,'heWei'),F(1),G('qiWei'),G('qiHeWei'),P(7,'ma')] },
+  { name:'10-L序(三)', type:'L', rule:'49', expr:[P(3,'ma'),P(3,'he'),P(6,'ma'),P(6,'he'),F(13),G('liuHeWei'),P(7,'ma'),P(7,'he'),P(7,'bo')] },
+  { name:'11-L序(三)', type:'L', rule:'48', expr:[P(3,'ma'),P(3,'he'),P(6,'ma'),P(6,'he'),F(44),G('liuHeWei'),P(7,'ma'),P(7,'bo'),P(7,'he')] },
+  { name:'12-L序(三)', type:'L', rule:'48', expr:[P(3,'ma'),P(3,'wei'),P(5,'he'),F(12),P(7,'ma'),P(7,'xiaoWeiNian')] },
+  { name:'13-L序(三)', type:'L', rule:'both', expr:[P(1,'ma'),P(2,'ma'),P(3,'ma'),P(3,'he'),P(6,'ma'),P(6,'he'),F(19),P(7,'bo'),P(7,'he')] },
+  { name:'14-D序(三)', type:'D', rule:'48', expr:[P(6,'ma'),P(6,'heWei'),F(8),P(7,'tou'),G('zongWei'),G('zongHeWei')] },
+  { name:'15-D序(三)', type:'D', rule:'48', expr:[P(6,'ma'),P(6,'heWei'),F(25),P(7,'tou'),G('zongWei'),G('zongHeWei')] },
+  { name:'16-D序(三)', type:'D', rule:'48', expr:[P(6,'ma'),P(6,'heWei'),F(26),P(7,'tou'),G('zongWei'),G('zongHeWei')] },
+  { name:'17-D序(三)', type:'D', rule:'49', expr:[P(1,'tou'),P(4,'wei'),P(4,'bo'),P(5,'ma'),P(6,'ma'),F(23)] },
+  { name:'18-D序(三)', type:'D', rule:'49', expr:[P(1,'tou'),P(4,'wei'),P(4,'bo'),P(5,'ma'),P(6,'ma'),F(45)] }
+];
+
+/* ---------- 减法规则 ---------- */
+function applySub(total, rule, stopAt49){
+  if (rule === '48'){
+    const cap = stopAt49 ? 49 : 48;
+    if (total <= cap) return total;
+    while (total > cap) total -= 48;
+    return total;
+  }
+  if (rule === '49'){
+    if (total <= 49) return total;
+    while (total > 49) total -= 49;
+    return total;
+  }
+  return total;
+}
+
+function digitSum(n){
+  return String(n).split('').reduce(function(a, b){ return a + parseInt(b, 10); }, 0);
+}
+
+/* ---------- 一次开奖的上下文 ---------- */
+function buildContext(items, text){
+  if (!items || items.length < 7) return null;
+
+  const L = [null];
+  for (let i = 0; i < 6; i++) L[i + 1] = makeObj(items[i].num, items[i].sx, items[i].wx);
+  const te = makeObj(items[6].num, items[6].sx, items[6].wx);
+
+  const sorted = items.slice(0, 6).sort(function(a, b){ return a.num - b.num; });
+  const D = [null];
+  for (let i = 0; i < 6; i++) D[i + 1] = makeObj(sorted[i].num, sorted[i].sx, sorted[i].wx);
+
+  const nums = [L[1].num, L[2].num, L[3].num, L[4].num, L[5].num, L[6].num];
+  const flatSum = nums.reduce(function(a, b){ return a + b; }, 0);
+  const zong = flatSum + te.num;
+  const qi = findQi(text);
+
+  return {
+    L: L,
+    D: D,
+    te: te,
+    qi: qi,
+    globals: {
+      zong: zong,
+      zongWei: zong % 10,
+      zongHe: digitSum(zong),
+      zongHeWei: digitSum(zong) % 10,
+      liuHeWei: flatSum % 10,
+      qi: qi,
+      qiHe: digitSum(qi),
+      qiHeWei: digitSum(qi) % 10,
+      qiWei: qi % 10
+    }
+  };
+}
+
+/* ---------- 计算一条公式 ---------- */
+function computeFormula(f, ctx){
+  const arr = ctx ? (f.type === 'D' ? ctx.D : ctx.L) : null;
+  const parts = [];
+  let total = 0;
+
+  for (let i = 0; i < f.expr.length; i++){
+    const t = f.expr[i];
+    let v = null;
+
+    if (t.k === 'fixed'){
+      v = Number(t.v) || 0;
+    } else if (t.k === 'global'){
+      v = ctx ? (ctx.globals[t.key] || 0) : null;
+    } else if (ctx){
+      let obj;
+      if (Number(t.pos) === 7){
+        obj = ctx.te;
+      } else if (t.order === 'D' || t.order === 'L'){
+        obj = (t.order === 'D' ? ctx.D : ctx.L)[t.pos];
+      } else {
+        obj = arr[t.pos];
+      }
+      v = obj ? (typeof obj[t.attr] === 'number' ? obj[t.attr] : 0) : 0;
+    }
+
+    if (ctx) total += v;
+    parts.push({
+      label: termLabel(t),
+      value: v,
+      kind: t.k === 'pos' ? (Number(t.pos) === 7 ? 'te' : 'ping') : t.k
+    });
+  }
+
+  return {
+    parts: parts,
+    total: ctx ? total : null,
+    out: ctx ? ruleResult(f, total) : null
+  };
+}
+
+function ruleResult(f, total){
+  if (f.rule === 'both'){
+    const a = applySub(total, '48', f.stopAt49);
+    const b = applySub(total, '49', f.stopAt49);
+    return { both: true, values: [a, b], a: a, b: b };
+  }
+  const v = applySub(total, f.rule, f.stopAt49);
+  return { both: false, values: [v], a: v, b: v };
+}
+
+/* ===================== ENGINE END ===================== */
+
+</script>
+
+<script>
+/* ===================== 页面交互 ===================== */
+(function(){
+'use strict';
+
+const $ = function(sel){ return document.querySelector(sel); };
+const clone = function(o){ return JSON.parse(JSON.stringify(o)); };
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+
+/* ---------- 公式的保存 / 读取 ---------- */
+const STORE_KEY = 'dlxu.formulas.v2';
+
+function normalizeTerm(t){
+  if (!t || typeof t !== 'object') return null;
+  if (t.k === 'fixed'){
+    const v = Number(t.v);
+    return Number.isFinite(v) ? { k:'fixed', v:v } : null;
+  }
+  if (t.k === 'global'){
+    return GLOBAL_KEYS.has(t.key) ? { k:'global', key:t.key } : null;
+  }
+  if (t.k === 'pos'){
+    const pos = Number(t.pos);
+    if (!Number.isInteger(pos) || pos < 1 || pos > 7) return null;
+    if (!ATTR_KEYS.has(t.attr)) return null;
+    const order = (t.order === 'D' || t.order === 'L') ? t.order : 'auto';
+    return { k:'pos', pos:pos, attr:t.attr, order:order };
+  }
+  return null;
+}
+
+function normalizeFormula(f){
+  if (!f || typeof f !== 'object') return null;
+  const expr = (Array.isArray(f.expr) ? f.expr : []).map(normalizeTerm).filter(Boolean);
+  if (!expr.length) return null;
+  return {
+    name: String(f.name || '未命名公式').slice(0, 40),
+    type: f.type === 'L' ? 'L' : 'D',
+    rule: (f.rule === '48' || f.rule === '49' || f.rule === 'both') ? f.rule : '49',
+    stopAt49: !!f.stopAt49,
+    expr: expr
+  };
+}
+
+/* 首次打开用内置公式；此后完全按你增删后的结果为准（全部删光也保持为空） */
+function loadFormulas(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw){
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.map(normalizeFormula).filter(Boolean);
+    }
+  }catch(e){ /* ignore */ }
+  return clone(DEFAULT_FORMULAS);
+}
+
+function persist(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(formulas)); }catch(e){ /* ignore */ }
+}
+
+let formulas = loadFormulas();
+let editIndex = -1;
+let editExpr = [];
+let quickTimer = 0;
+
+/* ---------- 小工具 ---------- */
+function debounce(fn, ms){
+  let timer = 0;
+  return function(){
+    clearTimeout(timer);
+    timer = setTimeout(fn, ms);
+  };
+}
+
+function ruleText(f){
+  let s;
+  if (f.rule === 'both') s = '48/49 双制';
+  else if (f.rule === '48') s = '48 制';
+  else s = '49 制';
+  if (f.stopAt49 && f.rule !== '49') s += '（≤49止）';
+  return s;
+}
+
+function subText(f){
+  if (f.rule === 'both') return '-48/-49';
+  return f.rule === '48' ? '-48' : '-49';
+}
+
+function pad2(n){
+  return String(n).length < 2 ? '0' + n : String(n);
+}
+
+/* ---------- 渲染：状态 / 识别结果 ---------- */
+function renderStatus(items, ctx){
+  const el = $('#status');
+  el.classList.remove('ok', 'warn');
+  if (!items.length){
+    el.textContent = '等待粘贴开奖信息…';
+    return;
+  }
+  if (!ctx){
+    el.textContent = '已识别 ' + items.length + ' 个号码，还差 ' + (7 - items.length) + ' 个（6 平码 + 1 特码）';
+    el.classList.add('warn');
+    return;
+  }
+  el.textContent = (ctx.qi ? '第 ' + ctx.qi + ' 期 · ' : '') + '已识别 7 个号码 · 自动计算完成';
+  el.classList.add('ok');
+}
+
+function renderParsed(items){
+  const box = $('#parsed');
+  if (!items.length){ box.innerHTML = ''; return; }
+  const qi = findQi($('#inputData').value);
+  const parts = [];
+  if (qi) parts.push('<span class="chip">第' + qi + '期</span>');
+  items.slice(0, 7).forEach(function(it, i){
+    parts.push('<span class="chip' + (i === 6 ? ' te' : '') + '">' + pad2(it.num) + ' ' + esc(it.sx) + '/' + esc(it.wx) + '</span>');
+  });
+  if (items.length > 7) parts.push('<span class="muted">共 ' + items.length + ' 个，仅用前 7 个</span>');
+  box.innerHTML = '<span class="muted">识别到：</span>' + parts.join('');
+}
+
+/* ---------- 渲染：逐条 ---------- */
+function renderDetail(computed){
+  const tbody = $('#detailBody');
+  if (!formulas.length){
+    tbody.innerHTML = '<tr><td class="c-empty" colspan="8">还没有公式，在上面「快速添加公式」里输入一条即可。</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = computed.map(function(r, i){
+    const f = r.f;
+
+    let expr;
+    if (r.parts.length){
+      expr = r.parts.map(function(p){
+        const cls = p.kind === 'te' ? 'tm te'
+                  : p.kind === 'global' ? 'tm global'
+                  : p.kind === 'fixed' ? 'tm fixed' : 'tm';
+        const val = (p.value === null || p.value === undefined || p.kind === 'fixed')
+                  ? '' : '<i>(' + p.value + ')</i>';
+        return '<span class="' + cls + '">' + esc(p.label) + val + '</span>';
+      }).join(' <span class="op">+</span> ');
+    } else {
+      expr = '<span class="muted">（空）</span>';
+    }
+
+    let totalCell = '<span class="muted">—</span>';
+    let subCell = '<span class="muted">—</span>';
+    let resCell = '<span class="muted">—</span>';
+
+    if (r.out){
+      totalCell = String(r.total);
+      subCell = subText(f);
+      if (r.out.both && r.out.values[0] !== r.out.values[1]){
+        resCell = '<span class="res-pair">48制 <b>' + r.out.values[0] + '</b></span>' +
+                  '<span class="res-pair">49制 <b>' + r.out.values[1] + '</b></span>';
+      } else {
+        resCell = '<b class="res">' + r.out.values[0] + '</b>';
+      }
+    }
+
+    return '<tr>' +
+      '<td class="c-name" title="' + esc(f.name) + '">' + esc(f.name) + '</td>' +
+      '<td class="c-type">' + f.type + '序</td>' +
+      '<td class="c-rule">' + ruleText(f) + '</td>' +
+      '<td class="c-expr">' + expr + '</td>' +
+      '<td class="c-total" data-label="原始和">' + totalCell + '</td>' +
+      '<td class="c-sub" data-label="减">' + subCell + '</td>' +
+      '<td class="c-res">' + resCell + '</td>' +
+      '<td class="c-ops">' +
+        '<button class="ghost mini" type="button" data-act="edit" data-i="' + i + '">编辑</button>' +
+        '<button class="ghost mini" type="button" data-act="dup" data-i="' + i + '">复制</button>' +
+        '<button class="danger mini" type="button" data-act="del" data-i="' + i + '">删除</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+/* ---------- 渲染：统计 ---------- */
+function statLine(count, nums){
+  return '<div class="stat-line"><span class="lb">〖' + count + '次〗</span>' +
+    nums.map(pad2).join(',<wbr>') +
+    '<span class="cnt">（共' + nums.length + '个）</span></div>';
+}
+
+function renderStats(computed, ctx){
+  const box = $('#stats');
+  const hint = $('#statHint');
+  if (!ctx || !computed.length){
+    box.innerHTML = '<div class="empty">粘贴开奖信息后自动统计（下方「逐条」中的公式照常显示）。</div>';
+    hint.textContent = '';
+    return;
+  }
+
+  const counts = new Map();
+  let total = 0;
+  computed.forEach(function(r){
+    if (!r.out) return;
+    r.out.values.forEach(function(v){
+      counts.set(v, (counts.get(v) || 0) + 1);
+      total++;
+    });
+  });
+
+  const byCount = new Map();
+  counts.forEach(function(c, num){
+    if (!byCount.has(c)) byCount.set(c, []);
+    byCount.get(c).push(num);
+  });
+
+  const missing = [];
+  for (let n = 1; n <= 49; n++) if (!counts.has(n)) missing.push(n);
+
+  let html = '';
+  if (missing.length) html += statLine(0, missing);
+  Array.from(byCount.keys()).sort(function(a, b){ return a - b; }).forEach(function(c){
+    html += statLine(c, byCount.get(c).sort(function(a, b){ return a - b; }));
+  });
+
+  box.innerHTML = html || '<div class="empty">暂无结果。</div>';
+  hint.textContent = '共 ' + total + ' 个结果 · 覆盖 ' + counts.size + '/49 个号码';
+}
+
+/* ---------- 主渲染 ---------- */
+function render(){
+  const text = $('#inputData').value;
+  const items = parseInput(text);
+  const ctx = buildContext(items, text);
+  const computed = formulas.map(function(f){
+    const r = computeFormula(f, ctx);
+    return { f: f, parts: r.parts, total: r.total, out: r.out };
+  });
+
+  renderStatus(items, ctx);
+  renderParsed(items);
+  renderDetail(computed);
+  renderStats(computed, ctx);
+  $('#formulaCount').textContent = '共 ' + formulas.length + ' 条公式';
+}
+
+/* ---------- 逐条表格操作 ---------- */
+$('#detailBody').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const i = Number(btn.dataset.i);
+  const act = btn.dataset.act;
+
+  if (act === 'edit'){ openEditor(i); return; }
+
+  if (act === 'dup'){
+    const copy = clone(formulas[i]);
+    copy.name = (copy.name + ' 副本').slice(0, 40);
+    formulas.splice(i + 1, 0, copy);
+    persist();
+    render();
+    return;
+  }
+
+  if (act === 'del'){
+    if (!confirm('确定删除公式「' + formulas[i].name + '」？')) return;
+    formulas.splice(i, 1);
+    persist();
+    render();
+  }
+});
+
+/* ---------- 快速添加 ---------- */
+function setQuickMsg(text, cls){
+  const el = $('#qPreview');
+  el.className = 'quick-preview' + (cls ? ' ' + cls : '');
+  el.textContent = text;
+}
+
+function quickHint(){
+  setQuickMsg('用 + 连接各项：平1头、平2码、特肖、特段、总分、总和尾、六合尾、期合、50 …（平码项后面加 L 可强制按 L 序）', '');
+}
+
+function updateQuickPreview(){
+  const raw = $('#qText').value.trim();
+  if (!raw){ quickHint(); return; }
+  const parsed = parseFormulaText(raw);
+  if (!parsed.ok){ setQuickMsg('✗ ' + parsed.error, 'err'); return; }
+  setQuickMsg('✓ 将添加：' + parsed.expr.map(termLabel).join(' + ') + '（共 ' + parsed.expr.length + ' 项）', 'ok');
+}
+
+function addQuickFormula(){
+  const raw = $('#qText').value.trim();
+  if (!raw){
+    setQuickMsg('✗ 先写一条公式，例：平1头+平2码+特肖+50', 'err');
+    $('#qText').focus();
+    return;
+  }
+
+  const parsed = parseFormulaText(raw);
+  if (!parsed.ok){
+    setQuickMsg('✗ ' + parsed.error, 'err');
+    $('#qText').focus();
+    return;
+  }
+
+  const typedName = $('#qName').value.trim();
+  const name = (typedName || raw).slice(0, 40);
+
+  formulas.unshift({
+    name: name,
+    type: $('#qType').value,
+    rule: $('#qRule').value,
+    stopAt49: false,
+    expr: parsed.expr
+  });
+  persist();
+  render();
+
+  $('#qText').value = '';
+  $('#qName').value = '';
+  setQuickMsg('✓ 已添加「' + name + '」：' + parsed.expr.map(termLabel).join(' + '), 'ok');
+
+  clearTimeout(quickTimer);
+  quickTimer = setTimeout(function(){
+    if (!$('#qText').value.trim()) quickHint();
+  }, 2600);
+
+  $('#qText').focus();
+}
+
+$('#qAdd').addEventListener('click', addQuickFormula);
+$('#qText').addEventListener('input', debounce(updateQuickPreview, 120));
+$('#qText').addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){ e.preventDefault(); addQuickFormula(); }
+});
+
+/* ---------- 公式编辑器（编辑已有公式） ---------- */
+function newTerm(kind){
+  if (kind === 'fixed') return { k:'fixed', v:0 };
+  if (kind === 'global') return { k:'global', key:'zong' };
+  return { k:'pos', pos:1, attr:'ma', order:'auto' };
+}
+
+function makeSelect(cls, options, value){
+  const sel = document.createElement('select');
+  sel.className = cls;
+  options.forEach(function(o){
+    const opt = document.createElement('option');
+    opt.value = String(o[0]);
+    opt.textContent = o[1];
+    sel.appendChild(opt);
+  });
+  sel.value = String(value);
+  return sel;
+}
+
+function renderPreview(){
+  const txt = editExpr.length
+    ? editExpr.map(termLabel).join(' + ')
+    : '（空，请添加表达式项）';
+  $('#exprPreview').textContent = '预览：' + txt;
+}
+
+function renderTermList(){
+  const list = $('#termList');
+  list.innerHTML = '';
+
+  editExpr.forEach(function(t, i){
+    const row = document.createElement('div');
+    row.className = 'term-row';
+    row.dataset.i = String(i);
+
+    row.appendChild(makeSelect('t-kind', [['pos','位置'],['fixed','固定值'],['global','全局值']], t.k));
+
+    const params = document.createElement('div');
+    params.className = 'term-params';
+
+    if (t.k === 'pos'){
+      params.appendChild(makeSelect('t-pos',
+        [[1,'平1'],[2,'平2'],[3,'平3'],[4,'平4'],[5,'平5'],[6,'平6'],[7,'特']], t.pos));
+      params.appendChild(makeSelect('t-attr', ATTR_LIST, t.attr));
+      const ord = makeSelect('t-order', [['auto','跟随类型'],['L','按L序'],['D','按D序']], t.order || 'auto');
+      if (Number(t.pos) === 7) ord.disabled = true;
+      params.appendChild(ord);
+    } else if (t.k === 'fixed'){
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 't-num';
+      inp.value = t.v;
+      params.appendChild(inp);
+    } else {
+      params.appendChild(makeSelect('t-global', GLOBAL_LIST, t.key));
+    }
+
+    row.appendChild(params);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 't-del ghost mini';
+    del.textContent = '×';
+    del.title = '删除该项';
+    row.appendChild(del);
+
+    list.appendChild(row);
+  });
+
+  renderPreview();
+}
+
+$('#termList').addEventListener('change', function(e){
+  const row = e.target.closest('.term-row');
+  if (!row) return;
+  const i = Number(row.dataset.i);
+  const t = editExpr[i];
+  if (!t) return;
+
+  if (e.target.classList.contains('t-kind')){
+    editExpr[i] = newTerm(e.target.value);
+    renderTermList();
+    return;
+  }
+  if (e.target.classList.contains('t-pos')){
+    t.pos = Number(e.target.value);
+    if (t.pos === 7) t.order = 'auto';
+    renderTermList();
+    return;
+  }
+  if (e.target.classList.contains('t-attr')) t.attr = e.target.value;
+  if (e.target.classList.contains('t-order')) t.order = e.target.value;
+  if (e.target.classList.contains('t-global')) t.key = e.target.value;
+  renderPreview();
+});
+
+$('#termList').addEventListener('input', function(e){
+  if (!e.target.classList.contains('t-num')) return;
+  const row = e.target.closest('.term-row');
+  const i = Number(row.dataset.i);
+  if (editExpr[i]) editExpr[i].v = Number(e.target.value) || 0;
+  renderPreview();
+});
+
+$('#termList').addEventListener('click', function(e){
+  const del = e.target.closest('.t-del');
+  if (!del) return;
+  const row = del.closest('.term-row');
+  editExpr.splice(Number(row.dataset.i), 1);
+  renderTermList();
+});
+
+function openEditor(index){
+  if (index < 0 || !formulas[index]) return;
+  editIndex = index;
+  const src = formulas[index];
+
+  $('#modalTitle').textContent = '编辑公式';
+  $('#fName').value = src.name;
+  $('#fType').value = src.type;
+  $('#fRule').value = src.rule;
+  $('#fStop').checked = !!src.stopAt49;
+  $('#fStop').disabled = src.rule === '49';
+  $('#btnDel').style.display = '';
+
+  editExpr = (src.expr || []).map(function(t){ return Object.assign({}, t); });
+  if (!editExpr.length) editExpr.push(newTerm('pos'));
+
+  renderTermList();
+  $('#overlay').classList.remove('hidden');
+  setTimeout(function(){ $('#fName').focus(); $('#fName').select(); }, 0);
+}
+
+function closeEditor(){
+  $('#overlay').classList.add('hidden');
+  editIndex = -1;
+  editExpr = [];
+}
+
+function saveEditor(){
+  if (editIndex < 0) return;
+
+  const name = ($('#fName').value || '').trim() || '未命名公式';
+  const rule = $('#fRule').value;
+
+  if (!editExpr.length){
+    alert('请至少添加一个表达式项。');
+    return;
+  }
+
+  const f = {
+    name: name.slice(0, 40),
+    type: $('#fType').value,
+    rule: rule,
+    stopAt49: rule !== '49' && $('#fStop').checked,
+    expr: editExpr.map(function(t){
+      if (t.k === 'fixed') return { k:'fixed', v: Number(t.v) || 0 };
+      if (t.k === 'global') return { k:'global', key: t.key };
+      return {
+        k:'pos',
+        pos: Number(t.pos),
+        attr: t.attr,
+        order: Number(t.pos) === 7 ? 'auto' : (t.order || 'auto')
+      };
+    })
+  };
+
+  formulas[editIndex] = f;
+  persist();
+  closeEditor();
+  render();
+}
+
+$('#fRule').addEventListener('change', function(){
+  $('#fStop').disabled = this.value === '49';
+});
+
+Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function(btn){
+  btn.addEventListener('click', function(){
+    editExpr.push(newTerm(btn.dataset.add));
+    renderTermList();
+  });
+});
+
+$('#btnSave').addEventListener('click', saveEditor);
+$('#btnCancel').addEventListener('click', closeEditor);
+
+$('#btnDel').addEventListener('click', function(){
+  if (editIndex < 0) return;
+  if (!confirm('确定删除公式「' + formulas[editIndex].name + '」？')) return;
+  formulas.splice(editIndex, 1);
+  persist();
+  closeEditor();
+  render();
+});
+
+$('#overlay').addEventListener('click', function(e){
+  if (e.target === $('#overlay')) closeEditor();
+});
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && !$('#overlay').classList.contains('hidden')) closeEditor();
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !$('#overlay').classList.contains('hidden')) saveEditor();
+});
+
+/* ---------- 顶部按钮 ---------- */
+$('#btnClear').addEventListener('click', function(){
+  $('#inputData').value = '';
+  render();
+  $('#inputData').focus();
+});
+
+/* ---------- 自动计算 ---------- */
+$('#inputData').addEventListener('input', debounce(render, 120));
+$('#inputData').addEventListener('change', render);
+
+/* ---------- 启动 ---------- */
+render();
+quickHint();
+
+})();
+</script>
+</body>
+</html>
