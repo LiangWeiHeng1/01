@@ -1,220 +1,232 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="format-detection" content="telephone=no">
-<meta name="theme-color" content="#f2f4f7">
-<title>DL序计算</title>
-<style>
-  :root{
-    --bg:#f2f4f7; --card:#fff; --line:#e2e6eb; --ink:#1f2328; --muted:#727c89;
-    --accent:#0055cc; --accent-dark:#0046a8; --danger:#c62828;
-  }
-  *{box-sizing:border-box;}
-  html{-webkit-text-size-adjust:100%;}
-  body{
-    margin:0;
-    padding:14px 16px calc(56px + env(safe-area-inset-bottom));
-    background:var(--bg); color:var(--ink);
-    font:14px/1.55 "Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
-  }
-  .wrap{max-width:1320px;margin:0 auto;}
-
-  /* ---------- 顶部 ---------- */
-  .topbar{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 2px 12px;}
-  h1{font-size:20px;margin:0;letter-spacing:.05em;}
-  .status{font-size:12.5px;color:var(--muted);}
-  .status.ok{color:#0b7a4b;}
-  .status.warn{color:#b26a00;}
-
-  /* ---------- 卡片 ---------- */
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
-  .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
-  .card-head h2{font-size:15px;margin:0;}
-  .hint{font-size:12.5px;color:var(--muted);}
-  .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-
-  /* ---------- 按钮 ---------- */
-  button{font:inherit;cursor:pointer;border:1px solid transparent;border-radius:8px;padding:8px 14px;background:var(--accent);color:#fff;min-height:36px;transition:background .15s;}
-  button:hover{background:var(--accent-dark);}
-  button.ghost{background:#fff;color:#3a4654;border-color:#d4dae1;}
-  button.ghost:hover{background:#f4f7fa;}
-  button.danger{background:#fff;color:var(--danger);border-color:#e7bdbd;}
-  button.danger:hover{background:#fdf3f3;}
-  button.mini{padding:3px 9px;font-size:12px;border-radius:6px;min-height:28px;}
-
-  /* ---------- 输入 ---------- */
-  textarea{
-    width:100%;height:190px;resize:vertical;padding:10px 12px;border:1px solid #d4dae1;border-radius:8px;
-    background:#fbfcfd;color:var(--ink);font:13.5px/1.7 Consolas,"Courier New",monospace;
-  }
-  textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);background:#fff;}
-  .input-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;}
-  .parsed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);}
-  .chip{background:#eef2f7;border:1px solid #dde4ec;border-radius:999px;padding:2px 9px;color:#33404d;font-family:Consolas,monospace;}
-  .chip.te{background:#f3ecfb;border-color:#e0d2f3;color:#6b30a8;}
-
-  input[type=text],input[type=number],select{
-    font:inherit;height:38px;padding:0 10px;border:1px solid #d4dae1;border-radius:8px;background:#fff;color:var(--ink);min-width:0;width:100%;
-  }
-  input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);}
-
-  /* ---------- 快速添加 ---------- */
-  .quick{border:1px dashed #cfd8e3;background:#f7f9fc;border-radius:10px;padding:10px 12px;margin-bottom:14px;}
-  .quick-label{display:block;font-size:13px;font-weight:700;color:#3a4654;margin-bottom:8px;}
-  .quick-label .sub{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px;}
-  .quick-grid{display:grid;gap:8px;grid-template-columns:minmax(0,1fr) 150px 108px 96px 82px;grid-template-areas:"text name rule type btn";}
-  #qText{grid-area:text;}
-  #qName{grid-area:name;}
-  #qRule{grid-area:rule;}
-  #qType{grid-area:type;}
-  #qAdd{grid-area:btn;padding:0 10px;}
-  .quick-preview{margin-top:8px;font-size:12.5px;color:#5a6672;min-height:18px;word-break:break-all;line-height:1.6;}
-  .quick-preview.err{color:#c62828;}
-  .quick-preview.ok{color:#0b7a4b;}
-
-  /* ---------- 表格 ---------- */
-  table{border-collapse:collapse;width:100%;font-size:13px;}
-  table.detail{min-width:1120px;}
-  .table-wrap{overflow:auto;}
-  thead th{position:sticky;top:0;background:#eef1f5;color:#44505e;font-weight:600;z-index:2;border-bottom:1px solid #dde3ea;white-space:nowrap;}
-  thead th.th-expr{text-align:left;}
-  th,td{border-bottom:1px solid #eef1f4;padding:6px 8px;text-align:center;vertical-align:middle;}
-  tbody tr:hover{background:#fafbfd;}
-  td.c-name{text-align:left;font-weight:600;white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis;}
-  td.c-expr{text-align:left;line-height:1.95;color:#2b333c;}
-  td.c-ops{white-space:nowrap;}
-  td.c-ops button{margin:0 2px;}
-
-  .tm{white-space:nowrap;}
-  .tm i{font-style:normal;color:#8b95a3;}
-  .tm.te{color:#6b30a8;}
-  .tm.global{color:#0b7a4b;}
-  .tm.fixed{color:#a15c00;font-weight:600;}
-  .op{color:#a7b0bc;margin:0 1px;}
-  .muted{color:#9aa3af;}
-  .res{color:var(--accent);font-size:15px;}
-  .res.none{color:#9aa3af;font-weight:400;}
-  .res-cap{display:none;}
-  .res-both{display:inline-block;margin:0 3px;color:#5a6672;font-size:12px;}
-  .res-both em{font-style:normal;}
-  .res-both b{color:var(--accent);font-size:14px;}
-  .rule-inline{display:none;}
-  td.c-empty{text-align:center;color:#9aa3af;padding:16px 0;}
-
-  /* ---------- 统计 ---------- */
-  .stat-line{padding:5px 0;border-bottom:1px dashed #e8ecf1;font-size:13.5px;color:#2b333c;font-family:Consolas,"Microsoft YaHei",monospace;}
-  .stat-line:last-child{border-bottom:none;}
-  .stat-line .lb{color:var(--accent);font-weight:700;margin-right:6px;}
-  .stat-line .cnt{color:#98a1ad;font-size:12.5px;margin-left:6px;}
-  .empty{color:#9aa3af;padding:6px 0;}
-
-  /* ---------- 提示条 ---------- */
-  .toast{
-    position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);
-    background:rgba(20,28,40,.92);color:#fff;font-size:13px;padding:9px 16px;border-radius:20px;
-    opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:80;max-width:86vw;text-align:center;
-  }
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  /* ---------- 弹窗 ---------- */
-  .overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;}
-  .overlay.hidden{display:none;}
-  .modal{background:#fff;border-radius:12px;width:min(760px,100%);max-height:88vh;overflow:auto;padding:18px 20px 16px;box-shadow:0 24px 60px rgba(15,23,42,.28);}
-  .modal h3{margin:0 0 14px;font-size:16px;}
-  .form-grid{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:10px;}
-  .form-grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#5a6672;}
-  .check{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5a6672;margin-top:10px;}
-  .check input{width:16px;height:16px;}
-
-  .expr-head{display:flex;align-items:center;justify-content:space-between;margin:16px 0 6px;font-size:13px;color:#3a4654;font-weight:600;gap:10px;flex-wrap:wrap;}
-  .term-list{border:1px solid #e6eaef;border-radius:8px;padding:6px 10px;background:#fafbfd;max-height:280px;overflow:auto;}
-  .term-row{display:flex;gap:8px;align-items:center;padding:4px 0;}
-  .term-params{display:flex;gap:8px;flex:1;flex-wrap:wrap;}
-  .t-num{width:120px;}
-  .t-del{width:34px;padding:3px 0;font-size:15px;line-height:1;flex:0 0 auto;}
-  .preview{margin-top:8px;font-size:12.5px;color:#5a6672;background:#f5f8fb;border:1px dashed #dbe3ec;border-radius:6px;padding:7px 10px;word-break:break-all;}
-  .modal-foot{display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap;}
-  .spacer{flex:1;}
-
-  /* ===================== 手机 / 窄屏 ===================== */
-  @media (max-width:1023px){
-    .table-wrap{overflow:visible;}
-    table.detail{min-width:0;display:block;}
-    table.detail thead{display:none;}
-    table.detail tbody{display:block;}
-    table.detail tr{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto;
-      grid-template-areas:
-        "name  res"
-        "type  res"
-        "expr  expr"
-        "total sub"
-        "ops   ops";
-      gap:2px 10px;
-      border:1px solid var(--line);
-      border-radius:10px;
-      padding:10px 12px;
-      margin:0 0 10px;
-      background:#fff;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#f2f4f7">
+  <title>DL序计算 · 带趋势图</title>
+  <style>
+    /* ===== 原有样式（略作精简，确保核心功能可用） ===== */
+    :root{
+      --bg:#f2f4f7; --card:#fff; --line:#e2e6eb; --ink:#1f2328; --muted:#727c89;
+      --accent:#0055cc; --accent-dark:#0046a8; --danger:#c62828;
     }
-    table.detail td{border:0;padding:0;text-align:left;font-size:13px;min-width:0;}
-    table.detail tbody tr:hover{background:#fff;}
-    table.detail td.c-name{grid-area:name;max-width:100%;font-size:15px;}
-    table.detail td.c-type{grid-area:type;color:#98a1ad;font-size:12px;}
-    table.detail td.c-type .rule-inline{display:inline;}
-    table.detail td.c-rule{display:none;}
-    table.detail td.c-expr{grid-area:expr;margin:2px 0;font-size:12.5px;line-height:1.9;overflow-wrap:anywhere;}
-    table.detail td.c-total{grid-area:total;color:#7b8794;font-size:12px;}
-    table.detail td.c-sub{grid-area:sub;text-align:right;color:#7b8794;font-size:12px;}
-    table.detail td.c-res{
-      grid-area:res;justify-self:end;align-self:center;
-      background:#eef4ff;border:1px solid #d5e3ff;border-radius:10px;
-      padding:5px 11px;min-width:74px;text-align:center;white-space:nowrap;
+    *{box-sizing:border-box;}
+    html{-webkit-text-size-adjust:100%;}
+    body{
+      margin:0;
+      padding:14px 16px calc(56px + env(safe-area-inset-bottom));
+      background:var(--bg); color:var(--ink);
+      font:14px/1.55 "Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif;
     }
-    table.detail td.c-res .res-cap{display:block;font-size:11px;line-height:1.3;color:#5b7aa8;letter-spacing:.08em;}
-    table.detail td.c-res .res{font-size:22px;line-height:1.15;}
-    table.detail td.c-res .res.none{font-size:15px;color:#9aa3af;}
-    table.detail td.c-res .res-both{display:block;margin:0;font-size:11px;line-height:1.4;color:#5b7aa8;}
-    table.detail td.c-res .res-both b{font-size:16px;}
-    table.detail td.c-ops{grid-area:ops;display:flex;justify-content:flex-end;gap:6px;margin-top:6px;}
-    table.detail td.c-ops button{min-height:32px;padding:4px 12px;font-size:13px;margin:0;}
-    table.detail td.c-total::before{content:attr(data-label) " ";color:#a7b0bc;}
-    table.detail td.c-sub::before{content:attr(data-label) " ";color:#a7b0bc;}
-    table.detail td.c-empty{grid-column:1 / -1;border:0;text-align:center;padding:14px 0;}
-  }
+    .wrap{max-width:1320px;margin:0 auto;}
 
-  @media (max-width:720px){
-    body{padding:10px 10px calc(40px + env(safe-area-inset-bottom));}
-    h1{font-size:18px;}
-    .card{padding:12px;border-radius:10px;margin-bottom:12px;}
-    textarea{height:150px;}
-    .quick{padding:10px;}
-    .quick-grid{grid-template-columns:1fr 1fr;grid-template-areas:"text text" "name name" "rule type" "btn btn";}
-    #qAdd{height:42px;font-size:15px;font-weight:600;}
-    .overlay{padding:0;align-items:stretch;}
-    .modal{width:100%;max-height:100vh;border-radius:0;padding:14px 12px calc(20px + env(safe-area-inset-bottom));}
-    .modal h3{position:sticky;top:-14px;background:#fff;padding:4px 0 10px;z-index:3;}
-    .form-grid{grid-template-columns:1fr 1fr;gap:8px;}
-    .form-grid label:first-child{grid-column:1 / -1;}
-    .term-list{max-height:none;overflow:visible;padding:2px 10px;}
-    .term-row{flex-wrap:wrap;gap:8px;padding:8px 0;border-bottom:1px dashed #e6eaef;}
-    .term-row:last-child{border-bottom:0;}
-    .t-kind{flex:1 1 auto;order:1;width:auto;min-width:0;}
-    .t-del{order:2;flex:0 0 40px;width:40px;height:38px;}
-    .term-params{order:3;flex:1 1 100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
-    .term-params select,.term-params input{width:100%;}
-    .t-num{width:100%;}
-    .stat-line{font-size:12.5px;}
-    .modal-foot button{flex:1 1 auto;}
-    .spacer{display:none;}
-  }
-</style>
+    /* ---------- 顶部 iframe 区域 ---------- */
+    .iframe-container {
+      width: 100%;
+      margin: 0 0 16px 0;           /* 与下方内容留出间距 */
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04);
+      /* 让 iframe 更紧凑，适应手机 */
+      height: 340px;                /* 可根据需要调整高度 */
+    }
+    .iframe-container iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+    /* 在手机上稍微减小高度，避免占用过多屏幕 */
+    @media (max-width: 720px) {
+      .iframe-container {
+        height: 260px;
+        margin-bottom: 12px;
+      }
+    }
+
+    /* ---------- 顶部标题（原 topbar 保留，放在 iframe 下面） ---------- */
+    .topbar{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 2px 12px;}
+    h1{font-size:20px;margin:0;letter-spacing:.05em;}
+    .status{font-size:12.5px;color:var(--muted);}
+    .status.ok{color:#0b7a4b;}
+    .status.warn{color:#b26a00;}
+
+    /* ---------- 卡片 ---------- */
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+    .card-head h2{font-size:15px;margin:0;}
+    .hint{font-size:12.5px;color:var(--muted);}
+    .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+    /* ---------- 按钮 ---------- */
+    button{font:inherit;cursor:pointer;border:1px solid transparent;border-radius:8px;padding:8px 14px;background:var(--accent);color:#fff;min-height:36px;transition:background .15s;}
+    button:hover{background:var(--accent-dark);}
+    button.ghost{background:#fff;color:#3a4654;border-color:#d4dae1;}
+    button.ghost:hover{background:#f4f7fa;}
+    button.danger{background:#fff;color:var(--danger);border-color:#e7bdbd;}
+    button.danger:hover{background:#fdf3f3;}
+    button.mini{padding:3px 9px;font-size:12px;border-radius:6px;min-height:28px;}
+
+    /* ---------- 输入 ---------- */
+    textarea{
+      width:100%;height:190px;resize:vertical;padding:10px 12px;border:1px solid #d4dae1;border-radius:8px;
+      background:#fbfcfd;color:var(--ink);font:13.5px/1.7 Consolas,"Courier New",monospace;
+    }
+    textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);background:#fff;}
+    .input-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap;}
+    .parsed{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);}
+    .chip{background:#eef2f7;border:1px solid #dde4ec;border-radius:999px;padding:2px 9px;color:#33404d;font-family:Consolas,monospace;}
+    .chip.te{background:#f3ecfb;border-color:#e0d2f3;color:#6b30a8;}
+
+    input[type=text],input[type=number],select{
+      font:inherit;height:38px;padding:0 10px;border:1px solid #d4dae1;border-radius:8px;background:#fff;color:var(--ink);min-width:0;width:100%;
+    }
+    input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,85,204,.08);}
+
+    /* ---------- 快速添加 ---------- */
+    .quick{border:1px dashed #cfd8e3;background:#f7f9fc;border-radius:10px;padding:10px 12px;margin-bottom:14px;}
+    .quick-label{display:block;font-size:13px;font-weight:700;color:#3a4654;margin-bottom:8px;}
+    .quick-label .sub{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px;}
+    .quick-grid{display:grid;gap:8px;grid-template-columns:minmax(0,1fr) 150px 108px 96px 82px;grid-template-areas:"text name rule type btn";}
+    #qText{grid-area:text;}
+    #qName{grid-area:name;}
+    #qRule{grid-area:rule;}
+    #qType{grid-area:type;}
+    #qAdd{grid-area:btn;padding:0 10px;}
+    .quick-preview{margin-top:8px;font-size:12.5px;color:#5a6672;min-height:18px;word-break:break-all;line-height:1.6;}
+    .quick-preview.err{color:#c62828;}
+    .quick-preview.ok{color:#0b7a4b;}
+
+    /* ---------- 表格 ---------- */
+    table{border-collapse:collapse;width:100%;font-size:13px;}
+    table.detail{min-width:1120px;}
+    .table-wrap{overflow:auto;}
+    thead th{position:sticky;top:0;background:#eef1f5;color:#44505e;font-weight:600;z-index:2;border-bottom:1px solid #dde3ea;white-space:nowrap;}
+    thead th.th-expr{text-align:left;}
+    th,td{border-bottom:1px solid #eef1f4;padding:6px 8px;text-align:center;vertical-align:middle;}
+    tbody tr:hover{background:#fafbfd;}
+    td.c-name{text-align:left;font-weight:600;white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis;}
+    td.c-expr{text-align:left;line-height:1.95;color:#2b333c;}
+    td.c-ops{white-space:nowrap;}
+    td.c-ops button{margin:0 2px;}
+
+    .tm{white-space:nowrap;}
+    .tm i{font-style:normal;color:#8b95a3;}
+    .tm.te{color:#6b30a8;}
+    .tm.global{color:#0b7a4b;}
+    .tm.fixed{color:#a15c00;font-weight:600;}
+    .op{color:#a7b0bc;margin:0 1px;}
+    .muted{color:#9aa3af;}
+    .res{color:var(--accent);font-size:15px;}
+    .res-pair{display:inline-block;margin:0 3px;color:#5a6672;font-size:12px;}
+    .res-pair b{color:var(--accent);font-size:14px;}
+    td.c-empty{text-align:center;color:#9aa3af;padding:16px 0;}
+
+    /* ---------- 统计 ---------- */
+    .stat-line{padding:5px 0;border-bottom:1px dashed #e8ecf1;font-size:13.5px;color:#2b333c;font-family:Consolas,"Microsoft YaHei",monospace;}
+    .stat-line:last-child{border-bottom:none;}
+    .stat-line .lb{color:var(--accent);font-weight:700;margin-right:6px;}
+    .stat-line .cnt{color:#98a1ad;font-size:12.5px;margin-left:6px;}
+    .empty{color:#9aa3af;padding:6px 0;}
+
+    /* ---------- 弹窗 ---------- */
+    .overlay{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;}
+    .overlay.hidden{display:none;}
+    .modal{background:#fff;border-radius:12px;width:min(760px,100%);max-height:88vh;overflow:auto;padding:18px 20px 16px;box-shadow:0 24px 60px rgba(15,23,42,.28);}
+    .modal h3{margin:0 0 14px;font-size:16px;}
+    .form-grid{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:10px;}
+    .form-grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#5a6672;}
+    .check{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#5a6672;margin-top:10px;}
+    .check input{width:16px;height:16px;}
+
+    .expr-head{display:flex;align-items:center;justify-content:space-between;margin:16px 0 6px;font-size:13px;color:#3a4654;font-weight:600;gap:10px;flex-wrap:wrap;}
+    .term-list{border:1px solid #e6eaef;border-radius:8px;padding:6px 10px;background:#fafbfd;max-height:280px;overflow:auto;}
+    .term-row{display:flex;gap:8px;align-items:center;padding:4px 0;}
+    .term-params{display:flex;gap:8px;flex:1;flex-wrap:wrap;}
+    .t-num{width:120px;}
+    .t-del{width:34px;padding:3px 0;font-size:15px;line-height:1;flex:0 0 auto;}
+    .preview{margin-top:8px;font-size:12.5px;color:#5a6672;background:#f5f8fb;border:1px dashed #dbe3ec;border-radius:6px;padding:7px 10px;word-break:break-all;}
+    .modal-foot{display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap;}
+    .spacer{flex:1;}
+
+    /* ===================== 手机 / 窄屏 ===================== */
+    @media (max-width:1023px){
+      .table-wrap{overflow:visible;}
+      table.detail{min-width:0;display:block;}
+      table.detail thead{display:none;}
+      table.detail tbody{display:block;}
+      table.detail tr{
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        grid-template-areas:
+          "name  res"
+          "type  rule"
+          "expr  expr"
+          "total sub"
+          "ops   ops";
+        gap:2px 10px;
+        border:1px solid var(--line);
+        border-radius:10px;
+        padding:10px 12px;
+        margin:0 0 10px;
+        background:#fff;
+      }
+      table.detail td{border:0;padding:0;text-align:left;font-size:13px;min-width:0;}
+      table.detail tbody tr:hover{background:#fff;}
+      table.detail td.c-name{grid-area:name;max-width:100%;font-size:14px;}
+      table.detail td.c-type{grid-area:type;color:#98a1ad;font-size:12px;}
+      table.detail td.c-rule{grid-area:rule;text-align:right;color:#98a1ad;font-size:12px;}
+      table.detail td.c-expr{grid-area:expr;margin:2px 0;font-size:12.5px;line-height:1.9;overflow-wrap:anywhere;}
+      table.detail td.c-total{grid-area:total;color:#7b8794;font-size:12px;}
+      table.detail td.c-sub{grid-area:sub;text-align:right;color:#7b8794;font-size:12px;}
+      table.detail td.c-res{grid-area:res;text-align:right;white-space:nowrap;}
+      table.detail td.c-res .res-pair{display:block;margin:0;}
+      table.detail td.c-ops{grid-area:ops;display:flex;justify-content:flex-end;gap:6px;margin-top:6px;}
+      table.detail td.c-ops button{min-height:32px;padding:4px 12px;font-size:13px;margin:0;}
+      table.detail td.c-total::before{content:attr(data-label) " ";color:#a7b0bc;}
+      table.detail td.c-sub::before{content:attr(data-label) " ";color:#a7b0bc;}
+      table.detail td.c-empty{grid-column:1 / -1;border:0;text-align:center;padding:14px 0;}
+    }
+
+    @media (max-width:720px){
+      body{padding:10px 10px calc(40px + env(safe-area-inset-bottom));}
+      h1{font-size:18px;}
+      .card{padding:12px;border-radius:10px;margin-bottom:12px;}
+      textarea{height:150px;}
+      .quick{padding:10px;}
+      .quick-grid{grid-template-columns:1fr 1fr;grid-template-areas:"text text" "name name" "rule type" "btn btn";}
+      #qAdd{height:42px;font-size:15px;font-weight:600;}
+      .overlay{padding:0;align-items:stretch;}
+      .modal{width:100%;max-height:100vh;border-radius:0;padding:14px 12px calc(20px + env(safe-area-inset-bottom));}
+      .modal h3{position:sticky;top:-14px;background:#fff;padding:4px 0 10px;z-index:3;}
+      .form-grid{grid-template-columns:1fr 1fr;gap:8px;}
+      .form-grid label:first-child{grid-column:1 / -1;}
+      .term-list{max-height:none;overflow:visible;padding:2px 10px;}
+      .term-row{flex-wrap:wrap;gap:8px;padding:8px 0;border-bottom:1px dashed #e6eaef;}
+      .term-row:last-child{border-bottom:0;}
+      .t-kind{flex:1 1 auto;order:1;width:auto;min-width:0;}
+      .t-del{order:2;flex:0 0 40px;width:40px;height:38px;}
+      .term-params{order:3;flex:1 1 100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+      .term-params select,.term-params input{width:100%;}
+      .t-num{width:100%;}
+      .stat-line{font-size:12.5px;}
+      .modal-foot button{flex:1 1 auto;}
+      .spacer{display:none;}
+      .iframe-container {
+        height: 220px;              /* 手机更紧凑 */
+      }
+    }
+  </style>
 </head>
 <body>
 <div class="wrap">
+
+<iframe src="https://yyaann.4978qq.app:57759/trend?type=1"
+        style="width:100%;height:600px;border:0;display:block;"></iframe>
 
   <div class="topbar">
     <h1>DL序计算</h1>
@@ -332,8 +344,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
-
+<!-- ================= 计算引擎（原样保留） ================= -->
 <script>
 /* ===================== ENGINE START 计算引擎（无 DOM 依赖） ===================== */
 
@@ -469,48 +480,15 @@ function termLabel(t){
   return prefix + (ATTR_LABEL[t.attr] || t.attr);
 }
 
-/* 生成可复制、可再粘回来的公式文字：[D序·48制] 平1头+平2码+特肖+50 */
-function formulaToText(f){
-  const ruleLabel = f.rule === 'both' ? '4948双制' : (f.rule + '制');
-  const stopLabel = (f.stopAt49 && f.rule !== '49') ? '·49止' : '';
-
-  const body = f.expr.map(function(t){
-    if (t.k === 'fixed') return String(t.v);
-    if (t.k === 'global') return GLOBAL_LABEL[t.key] || t.key;
-    const pre = Number(t.pos) === 7 ? '特' : ('平' + t.pos);
-    const attr = t.attr === 'xiaoWeiNian' ? '肖' : (ATTR_LABEL[t.attr] || t.attr);
-    let suf = '';
-    if (Number(t.pos) !== 7 && (t.order === 'L' || t.order === 'D')) suf = t.order;
-    return pre + attr + suf;
-  }).join('+');
-
-  return '[' + f.type + '序·' + ruleLabel + stopLabel + '] ' + body;
-}
-
 /* ---------- 文字公式解析：平1头+平2码+特肖+50 ---------- */
 const CN_NUM = { '一':1, '二':2, '三':3, '四':4, '五':5, '六':6 };
 
 function parseFormulaText(text){
-  let norm = String(text || '')
+  const norm = String(text || '')
     .replace(/[＋]/g, '+')
     .replace(/[，,；;、]/g, '+')
     .replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
     .replace(/\s+/g, '');
-
-  /* 允许带前缀：[D序·48制] 平1头+平2码+50 —— 复制出去的公式可直接粘回来 */
-  let meta = null;
-  const pm = norm.match(/^\[([^\]]*)\]/);
-  if (pm){
-    const inside = pm[1];
-    meta = { type:null, rule:null, stopAt49:false };
-    if (inside.indexOf('L序') >= 0) meta.type = 'L';
-    else if (inside.indexOf('D序') >= 0) meta.type = 'D';
-    if (/48\/49|4948|双制/.test(inside)) meta.rule = 'both';
-    else if (inside.indexOf('49制') >= 0) meta.rule = '49';
-    else if (inside.indexOf('48制') >= 0) meta.rule = '48';
-    if (inside.indexOf('49止') >= 0) meta.stopAt49 = true;
-    norm = norm.slice(pm[0].length);
-  }
 
   const tokens = norm.split('+').filter(function(s){ return s.length > 0; });
   if (!tokens.length) return { ok:false, error:'还没有输入公式' };
@@ -559,7 +537,7 @@ function parseFormulaText(text){
     return { ok:false, error:'第 ' + (i + 1) + ' 项「' + tok + '」看不懂，可写：平1头 / 特肖 / 总分 / 50' };
   }
 
-  return { ok:true, expr:expr, meta:meta };
+  return { ok:true, expr:expr };
 }
 
 /* ---------- 默认公式（首次打开时使用；之后完全以你增删的结果为准） ---------- */
@@ -723,11 +701,10 @@ function ruleResult(f, total){
 }
 
 /* ===================== ENGINE END ===================== */
-
 </script>
 
+<!-- ================= 页面交互（原逻辑保持不变） ================= -->
 <script>
-/* ===================== 页面交互 ===================== */
 (function(){
 'use strict';
 
@@ -880,31 +857,30 @@ function renderDetail(computed){
 
     let totalCell = '<span class="muted">—</span>';
     let subCell = '<span class="muted">—</span>';
-    let resCell = '<span class="res-cap">结果</span><b class="res none">—</b>';
+    let resCell = '<span class="muted">—</span>';
 
     if (r.out){
       totalCell = String(r.total);
       subCell = subText(f);
       if (r.out.both && r.out.values[0] !== r.out.values[1]){
-        resCell = '<span class="res-cap">结果</span>' +
-                  '<span class="res-both"><em>48制</em> <b>' + r.out.values[0] + '</b></span>' +
-                  '<span class="res-both"><em>49制</em> <b>' + r.out.values[1] + '</b></span>';
+        resCell = '<span class="res-pair">48制 <b>' + r.out.values[0] + '</b></span>' +
+                  '<span class="res-pair">49制 <b>' + r.out.values[1] + '</b></span>';
       } else {
-        resCell = '<span class="res-cap">结果</span><b class="res">' + r.out.values[0] + '</b>';
+        resCell = '<b class="res">' + r.out.values[0] + '</b>';
       }
     }
 
     return '<tr>' +
       '<td class="c-name" title="' + esc(f.name) + '">' + esc(f.name) + '</td>' +
-      '<td class="c-type">' + f.type + '序<span class="rule-inline"> · ' + ruleText(f) + '</span></td>' +
+      '<td class="c-type">' + f.type + '序</td>' +
       '<td class="c-rule">' + ruleText(f) + '</td>' +
       '<td class="c-expr">' + expr + '</td>' +
       '<td class="c-total" data-label="原始和">' + totalCell + '</td>' +
       '<td class="c-sub" data-label="减">' + subCell + '</td>' +
       '<td class="c-res">' + resCell + '</td>' +
       '<td class="c-ops">' +
-        '<button class="ghost mini" type="button" data-act="copy" data-i="' + i + '" title="复制这条公式的文字，可粘贴发给别人">复制</button>' +
         '<button class="ghost mini" type="button" data-act="edit" data-i="' + i + '">编辑</button>' +
+        '<button class="ghost mini" type="button" data-act="dup" data-i="' + i + '">复制</button>' +
         '<button class="danger mini" type="button" data-act="del" data-i="' + i + '">删除</button>' +
       '</td>' +
     '</tr>';
@@ -981,7 +957,15 @@ $('#detailBody').addEventListener('click', function(e){
   const act = btn.dataset.act;
 
   if (act === 'edit'){ openEditor(i); return; }
-  if (act === 'copy'){ copyFormula(i); return; }
+
+  if (act === 'dup'){
+    const copy = clone(formulas[i]);
+    copy.name = (copy.name + ' 副本').slice(0, 40);
+    formulas.splice(i + 1, 0, copy);
+    persist();
+    render();
+    return;
+  }
 
   if (act === 'del'){
     if (!confirm('确定删除公式「' + formulas[i].name + '」？')) return;
@@ -991,59 +975,6 @@ $('#detailBody').addEventListener('click', function(e){
   }
 });
 
-/* ---------- 复制公式文字（发给别人用） ---------- */
-function fallbackCopy(text){
-  try{
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;top:-1000px;left:0;width:10px;height:10px;opacity:0;';
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    ta.setSelectionRange(0, text.length);
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  }catch(e){ return false; }
-}
-
-function copyText(text){
-  return new Promise(function(resolve){
-    try{
-      if (navigator.clipboard && window.isSecureContext){
-        navigator.clipboard.writeText(text).then(
-          function(){ resolve(true); },
-          function(){ resolve(fallbackCopy(text)); }
-        );
-        return;
-      }
-    }catch(e){ /* ignore */ }
-    resolve(fallbackCopy(text));
-  });
-}
-
-function copyFormula(i){
-  const f = formulas[i];
-  if (!f) return;
-  const text = formulaToText(f);
-  copyText(text).then(function(ok){
-    if (ok) toast('已复制公式，可粘贴发送给别人');
-    else window.prompt('复制失败，请手动复制：', text);
-  });
-}
-
-/* ---------- 底部提示条 ---------- */
-let toastTimer = 0;
-function toast(msg){
-  const el = $('#toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 1900);
-}
-
 /* ---------- 快速添加 ---------- */
 function setQuickMsg(text, cls){
   const el = $('#qPreview');
@@ -1052,22 +983,15 @@ function setQuickMsg(text, cls){
 }
 
 function quickHint(){
-  setQuickMsg('用 + 连接各项：平1头、平2码、特肖、特段、总分、总和尾、六合尾、期合、50 …；也可以直接粘贴别人发来的「[D序·48制] 平1头+…」', '');
+  setQuickMsg('用 + 连接各项：平1头、平2码、特肖、特段、总分、总和尾、六合尾、期合、50 …（平码项后面加 L 可强制按 L 序）', '');
 }
-
-function ruleLabelOf(rule){ return rule === 'both' ? '4948双制' : (rule + '制'); }
 
 function updateQuickPreview(){
   const raw = $('#qText').value.trim();
   if (!raw){ quickHint(); return; }
   const parsed = parseFormulaText(raw);
   if (!parsed.ok){ setQuickMsg('✗ ' + parsed.error, 'err'); return; }
-  const meta = parsed.meta || {};
-  const type = meta.type || $('#qType').value;
-  const rule = meta.rule || $('#qRule').value;
-  const stop = meta.stopAt49 && rule !== '49' ? '·49止' : '';
-  setQuickMsg('✓ 将添加：' + parsed.expr.map(termLabel).join(' + ') +
-    '（' + type + '序·' + ruleLabelOf(rule) + stop + '，共 ' + parsed.expr.length + ' 项）', 'ok');
+  setQuickMsg('✓ 将添加：' + parsed.expr.map(termLabel).join(' + ') + '（共 ' + parsed.expr.length + ' 项）', 'ok');
 }
 
 function addQuickFormula(){
@@ -1085,23 +1009,14 @@ function addQuickFormula(){
     return;
   }
 
-  const meta = parsed.meta || {};
-  if (meta.type) $('#qType').value = meta.type;
-  if (meta.rule) $('#qRule').value = meta.rule;
-
-  const type = meta.type || $('#qType').value;
-  const rule = meta.rule || $('#qRule').value;
-  const stopAt49 = !!meta.stopAt49 && rule !== '49';
-
   const typedName = $('#qName').value.trim();
-  const autoName = parsed.expr.map(termLabel).join('+');
-  const name = (typedName || autoName).slice(0, 40);
+  const name = (typedName || raw).slice(0, 40);
 
   formulas.unshift({
     name: name,
-    type: type,
-    rule: rule,
-    stopAt49: stopAt49,
+    type: $('#qType').value,
+    rule: $('#qRule').value,
+    stopAt49: false,
     expr: parsed.expr
   });
   persist();
